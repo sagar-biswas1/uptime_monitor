@@ -6,14 +6,30 @@
  */
 
 // dependencies
+const data = require("./lib/data");
+const environmentToExport = require("./helpers/environments");
 const http = require("http");
 const { handleReqRes } = require("./helpers/handleReqRes");
 // app object - module scaffolding
 const app = {};
 
+// data.update(
+//   "test",
+//   "newfile",
+//   {
+//     name: "gello",
+//   },
+//   (err) => {
+//     console.log(err);
+//   }
+// );
+
+data.read("test", "newFile", (err, data) => {
+  console.log(err, data);
+});
 // configurations
 app.config = {
-  port: 4000,
+  port: environmentToExport.port,
 };
 
 app.createServer = () => {
