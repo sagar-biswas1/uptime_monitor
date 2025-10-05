@@ -11,6 +11,7 @@ const { StringDecoder } = require("string_decoder");
 const {
   notFoundHandler,
 } = require("./../handlers/routeHandlers/notFoundHandler");
+const utilities = require("./utilities");
 const handler = {};
 
 handler.handleReqRes = (req, res) => {
@@ -44,16 +45,17 @@ handler.handleReqRes = (req, res) => {
 
   req.on("end", () => {
     realData += decoder.end();
+    requestProperties.body = utilities.parseJSON(realData);
     chosenHandler(requestProperties, (statusCode, payload) => {
       statusCode = typeof statusCode === "number" ? statusCode : 500;
 
       payload = typeof payload === "object" ? payload : {};
 
       const payloadString = JSON.stringify(payload);
+      res.setHeader("Content-type", "application/json");
       res.writeHead(statusCode);
       res.end(payloadString);
     });
-    res.end(realData);
   });
 };
 
