@@ -17,7 +17,6 @@ const handler = {};
 
 handler.tokenHandler = (requestProperties, cb) => {
   const acceptedMethod = ["get", "post", "put", "delete"];
-
   if (acceptedMethod.indexOf(requestProperties.method) > -1) {
     handler._token[requestProperties.method](requestProperties, cb);
   } else {
@@ -82,7 +81,7 @@ handler._token.get = (requestProperties, callback) => {
     requestProperties.queryStringObject.token.trim().length === 20
       ? requestProperties.queryStringObject.token.trim()
       : false;
-  if (!tokenId) {
+  if (tokenId) {
     data.read("tokens", tokenId, (err1, token) => {
       if (!err1 && token) {
         const parsedToken = parseJSON(token);
@@ -99,7 +98,97 @@ handler._token.get = (requestProperties, callback) => {
     });
   }
 };
-handler._token.put = (requestProperties, callback) => {};
-handler._token.delete = (requestProperties, callback) => {};
+handler._token.put = (requestProperties, callback) => {
+  const tokenId =
+    typeof requestProperties.body.token === "string" &&
+    requestProperties.body.token.trim().length === 20
+      ? requestProperties.body.token.trim()
+      : false;
+  const extend =
+    typeof requestProperties.body.extend === "boolean" &&
+    requestProperties.body.extend === true
+      ? requestProperties.body.extend
+      : false;
+  if (tokenId) {
+    data.read("tokens", tokenId, (err1, token) => {
+      if (!err1 && token) {
+        const parsedToken = parseJSON(token);
+        if (parsedToken.expires > Date.now()) {
+          parsedToken.expires = Date.now() + 60 * 60 * 1000;
 
+          data.update("tokens", tokenId, parsedToken, (err2) => {
+            if (!err2) {
+              callback(200);
+            } else {
+              cb(500, {
+                error: "Problem in server side",
+              });
+            }
+          });
+        } else {
+          cb(400, {
+            error: "Token already expired",
+          });
+        }
+      } else {
+        cb(500, {
+          error: "Problem in server side",
+        });
+      }
+    });
+  } else {
+    cb(400, {
+      error: "You have not provided tokenId in query string",
+    });
+  }
+};
+handler._token.delete = (requestProperties, callback) => {
+  const tokenId =
+    typeof requestProperties.queryStringObject.token === "string" &&
+    requestProperties.queryStringObject.token.trim().length === 20
+      ? requestProperties.queryStringObject.token.trim()
+      : false;
+
+  if (tokenId) {
+    data.read("tokens", tokenId, (err, u) => {
+      if (!err && u) {
+        const parsedToken = { ...parseJSON(u) };
+        data.delete("tokens", tokenId, (err) => {
+          if (!err) {
+            callback(200, {
+              message: "token was successfully deleted",
+            });
+          } else {
+            callback(500, {
+              error: "There was an error in server side",
+            });
+          }
+        });
+      } else {
+        callback(500, {
+          error: "There was an error in server side",
+        });
+      }
+    });
+  } else {
+    callback(404, {
+      error: "There was a problem in your request",
+    });
+  }
+};
+
+handler._token.verify = (id, phone, cb) => {
+  data.read("tokens", id, (err, tokenData) => {
+    if (!err && tokenData) {
+      const parsedToken = parseJSON(tokenData);
+      if (parsedToken.phone === phone && parsedToken.expires > Date.now()) {
+        cb(true);
+      } else {
+        cb(false);
+      }
+    } else {
+      cb(false);
+    }
+  });
+};
 module.exports = handler;
